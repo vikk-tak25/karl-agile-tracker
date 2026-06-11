@@ -7,6 +7,8 @@ const COLUMNS = ['todo', 'doing', 'done'];
 const state = {
   stories: [],
   editingId: null,
+  detailId: null,
+  filter: { search: '', status: 'all', minPoints: null, maxPoints: null },
 };
 
 // --- DOM references -------------------------------------------------------
@@ -29,11 +31,25 @@ async function load() {
   render();
 }
 
-/** Render every column from the current state. */
+/** Does a story pass the active search / status / points filter? */
+function matchesFilter(story) {
+  const f = state.filter;
+  if (f.status !== 'all' && story.status !== f.status) return false;
+  if (f.minPoints != null && Number(story.points) < f.minPoints) return false;
+  if (f.maxPoints != null && Number(story.points) > f.maxPoints) return false;
+  if (f.search) {
+    const haystack = `${story.title} ${story.description || ''}`.toLowerCase();
+    if (!haystack.includes(f.search.toLowerCase())) return false;
+  }
+  return true;
+}
+
+/** Render every column from the current state, applying the active filter. */
 function render() {
+  const visible = state.stories.filter(matchesFilter);
   for (const status of COLUMNS) {
     const list = document.querySelector(`[data-list="${status}"]`);
-    const inColumn = state.stories.filter((s) => s.status === status);
+    const inColumn = visible.filter((s) => s.status === status);
 
     list.innerHTML = '';
     if (inColumn.length === 0) {
@@ -362,8 +378,33 @@ async function onCommentSubmit(event) {
   await load();
 }
 
+/** Read the toolbar controls into state.filter and re-render. */
+function onFilterChange() {
+  const num = (el) => (el.value === '' ? null : Number(el.value));
+  state.filter = {
+    search: document.getElementById('search-input').value.trim(),
+    status: document.getElementById('status-filter').value,
+    minPoints: num(document.getElementById('min-points')),
+    maxPoints: num(document.getElementById('max-points')),
+  };
+  render();
+}
+
+/** Reset all filter controls. */
+function clearFilters() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('status-filter').value = 'all';
+  document.getElementById('min-points').value = '';
+  document.getElementById('max-points').value = '';
+  onFilterChange();
+}
+
 function init() {
   document.getElementById('new-story-btn').addEventListener('click', openCreateDialog);
+  ['search-input', 'min-points', 'max-points'].forEach((id) =>
+    document.getElementById(id).addEventListener('input', onFilterChange));
+  document.getElementById('status-filter').addEventListener('change', onFilterChange);
+  document.getElementById('clear-filters').addEventListener('click', clearFilters);
   document.getElementById('add-criterion').addEventListener('click', () => addCriterionRow());
   document.getElementById('board').addEventListener('click', handleBoardClick);
   form.addEventListener('submit', handleSubmit);
