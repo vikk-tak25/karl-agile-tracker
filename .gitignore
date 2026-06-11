@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Runtime data (seeded from data/seed.json on first run)
+data/stories.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
