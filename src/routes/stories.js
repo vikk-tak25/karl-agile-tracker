@@ -134,4 +134,50 @@ router.patch('/reorder', (req, res) => {
   res.json(sortByPriority(all));
 });
 
+// POST /api/stories/:id/comments — add a comment (with timestamp) to a story.
+router.post('/:id/comments', (req, res) => {
+  const story = store.getById(req.params.id);
+  if (!story) {
+    return res.status(404).json({ error: 'Story ei leitud.' });
+  }
+
+  const text = typeof (req.body || {}).text === 'string' ? req.body.text.trim() : '';
+  if (!text) {
+    return res.status(400).json({ errors: ['Kommentaar ei tohi olla tühi.'] });
+  }
+
+  const comment = {
+    id: store.nextCommentId(story),
+    text,
+    createdAt: nowTimestamp(),
+  };
+
+  const updated = {
+    ...story,
+    comments: [...(story.comments || []), comment],
+    updatedAt: nowTimestamp(),
+  };
+
+  store.replace(story.id, updated);
+  res.status(201).json(updated);
+});
+
+// DELETE /api/stories/:id/comments/:commentId — remove a comment (bonus).
+router.delete('/:id/comments/:commentId', (req, res) => {
+  const story = store.getById(req.params.id);
+  if (!story) {
+    return res.status(404).json({ error: 'Story ei leitud.' });
+  }
+
+  const commentId = Number(req.params.commentId);
+  const comments = (story.comments || []).filter((c) => c.id !== commentId);
+  if (comments.length === (story.comments || []).length) {
+    return res.status(404).json({ error: 'Kommentaari ei leitud.' });
+  }
+
+  const updated = { ...story, comments, updatedAt: nowTimestamp() };
+  store.replace(story.id, updated);
+  res.json(updated);
+});
+
 export default router;
