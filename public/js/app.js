@@ -56,6 +56,10 @@ function renderCard(story) {
     <div class="card-footer">
       <span class="badge points">${Number(story.points)} p</span>
       <span class="badge status-${story.status}">${story.status}</span>
+      <span class="card-actions">
+        <button type="button" class="icon-btn" data-action="edit" title="Muuda">✎</button>
+        <button type="button" class="icon-btn" data-action="delete" title="Kustuta">🗑</button>
+      </span>
     </div>`;
   return card;
 }
@@ -128,6 +132,29 @@ function openCreateDialog() {
   dialog.showModal();
 }
 
+/** Open the dialog in "edit" mode, pre-filled from an existing story. */
+function openEditDialog(story) {
+  form.reset();
+  state.editingId = story.id;
+  formTitle.textContent = 'Muuda story';
+  form.elements.title.value = story.title;
+  form.elements.description.value = story.description || '';
+  form.elements.points.value = story.points;
+  form.elements.status.value = story.status;
+  criteriaList.innerHTML = '';
+  (story.acceptanceCriteria || []).forEach((c) => addCriterionRow(c));
+  if (!criteriaList.children.length) addCriterionRow();
+  hideErrors();
+  dialog.showModal();
+}
+
+/** Confirm and delete a story. */
+async function deleteStory(story) {
+  if (!confirm(`Kustutan story "${story.title}"?`)) return;
+  await api.deleteStory(story.id);
+  await load();
+}
+
 /** Read the form into a story payload for the API. */
 function collectFormData() {
   const data = new FormData(form);
@@ -150,7 +177,11 @@ async function handleSubmit(event) {
   const payload = collectFormData();
 
   try {
-    await api.createStory(payload);
+    if (state.editingId != null) {
+      await api.updateStory(state.editingId, payload);
+    } else {
+      await api.createStory(payload);
+    }
     dialog.close();
     await load();
   } catch (err) {
@@ -164,9 +195,27 @@ async function handleSubmit(event) {
 
 // --- Wiring --------------------------------------------------------------
 
+/** Handle clicks on cards (edit / delete buttons) via event delegation. */
+function handleBoardClick(event) {
+  const card = event.target.closest('.card');
+  if (!card) return;
+  const story = state.stories.find((s) => s.id === Number(card.dataset.id));
+  if (!story) return;
+
+  const actionBtn = event.target.closest('[data-action]');
+  if (!actionBtn) return;
+
+  if (actionBtn.dataset.action === 'edit') {
+    openEditDialog(story);
+  } else if (actionBtn.dataset.action === 'delete') {
+    deleteStory(story);
+  }
+}
+
 function init() {
   document.getElementById('new-story-btn').addEventListener('click', openCreateDialog);
   document.getElementById('add-criterion').addEventListener('click', () => addCriterionRow());
+  document.getElementById('board').addEventListener('click', handleBoardClick);
   form.addEventListener('submit', handleSubmit);
   dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
   load();
