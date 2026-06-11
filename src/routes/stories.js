@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as store from '../store.js';
-import { validateStoryInput } from '../validation.js';
+import { validateStoryInput, STATUSES } from '../validation.js';
 import { nowTimestamp } from '../util.js';
 
 const router = Router();
@@ -86,6 +86,52 @@ router.delete('/:id', (req, res) => {
     return res.status(404).json({ error: 'Story ei leitud.' });
   }
   res.status(204).end();
+});
+
+// PATCH /api/stories/:id/status — change only the status (move between columns).
+router.patch('/:id/status', (req, res) => {
+  const existing = store.getById(req.params.id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Story ei leitud.' });
+  }
+
+  const { status } = req.body || {};
+  if (!STATUSES.includes(status)) {
+    return res.status(400).json({
+      errors: [`Staatus peab olema üks järgmistest: ${STATUSES.join(', ')}.`],
+    });
+  }
+
+  const updated = {
+    ...existing,
+    status,
+    // When the column changes, append to the end of the target column.
+    priority: status === existing.status ? existing.priority : nextPriority(status),
+    updatedAt: nowTimestamp(),
+  };
+
+  store.replace(existing.id, updated);
+  res.json(updated);
+});
+
+// PATCH /api/stories/reorder — persist a new ordering (backlog prioritisation).
+// Body: { "order": [id, id, ...] }. Each listed story gets priority = position.
+router.patch('/reorder', (req, res) => {
+  const order = (req.body || {}).order;
+  if (!Array.isArray(order)) {
+    return res.status(400).json({ errors: ['Väli "order" peab olema massiiv id-dest.'] });
+  }
+
+  const all = store.getAll();
+  order.forEach((id, index) => {
+    const story = all.find((s) => s.id === Number(id));
+    if (story) {
+      story.priority = index + 1;
+    }
+  });
+
+  store.saveAll(all);
+  res.json(sortByPriority(all));
 });
 
 export default router;
