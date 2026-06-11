@@ -1,11 +1,22 @@
-import { api } from './api.js';
+import { api, ApiError } from './api.js';
 
 const COLUMNS = ['todo', 'doing', 'done'];
 
-// Application state. `stories` is the latest snapshot from the server.
+// Application state. `stories` is the latest snapshot from the server;
+// `editingId` is the id of the story currently being edited (null = create).
 const state = {
   stories: [],
+  editingId: null,
 };
+
+// --- DOM references -------------------------------------------------------
+const dialog = document.getElementById('story-dialog');
+const form = document.getElementById('story-form');
+const formTitle = document.getElementById('story-form-title');
+const criteriaList = document.getElementById('criteria-list');
+const formErrors = document.getElementById('form-errors');
+
+// --- Data loading & rendering --------------------------------------------
 
 /** Fetch all stories from the API and re-render the board. */
 async function load() {
@@ -45,6 +56,10 @@ function renderCard(story) {
     <div class="card-footer">
       <span class="badge points">${Number(story.points)} p</span>
       <span class="badge status-${story.status}">${story.status}</span>
+      <span class="card-actions">
+        <button type="button" class="icon-btn" data-action="edit" title="Muuda">✎</button>
+        <button type="button" class="icon-btn" data-action="delete" title="Kustuta">🗑</button>
+      </span>
     </div>`;
   return card;
 }
@@ -68,4 +83,142 @@ function escapeHtml(value) {
   }[c]));
 }
 
-load();
+// --- Story dialog (create) -----------------------------------------------
+
+/** Append one acceptance-criterion input row to the dialog. */
+function addCriterionRow(value = '') {
+  const row = document.createElement('div');
+  row.className = 'criterion';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = value;
+  input.placeholder = 'nt. Kasutaja saab sisestada pealkirja';
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'icon-btn';
+  remove.textContent = '✕';
+  remove.title = 'Eemalda tingimus';
+  remove.addEventListener('click', () => row.remove());
+
+  row.append(input, remove);
+  criteriaList.appendChild(row);
+}
+
+function hideErrors() {
+  formErrors.hidden = true;
+  formErrors.innerHTML = '';
+}
+
+function showErrors(errors) {
+  formErrors.innerHTML = '';
+  for (const err of errors) {
+    const li = document.createElement('li');
+    li.textContent = err;
+    formErrors.appendChild(li);
+  }
+  formErrors.hidden = errors.length === 0;
+}
+
+/** Open the dialog in "create" mode with one empty criterion row. */
+function openCreateDialog() {
+  form.reset();
+  state.editingId = null;
+  formTitle.textContent = 'Uus story';
+  criteriaList.innerHTML = '';
+  addCriterionRow();
+  hideErrors();
+  dialog.showModal();
+}
+
+/** Open the dialog in "edit" mode, pre-filled from an existing story. */
+function openEditDialog(story) {
+  form.reset();
+  state.editingId = story.id;
+  formTitle.textContent = 'Muuda story';
+  form.elements.title.value = story.title;
+  form.elements.description.value = story.description || '';
+  form.elements.points.value = story.points;
+  form.elements.status.value = story.status;
+  criteriaList.innerHTML = '';
+  (story.acceptanceCriteria || []).forEach((c) => addCriterionRow(c));
+  if (!criteriaList.children.length) addCriterionRow();
+  hideErrors();
+  dialog.showModal();
+}
+
+/** Confirm and delete a story. */
+async function deleteStory(story) {
+  if (!confirm(`Kustutan story "${story.title}"?`)) return;
+  await api.deleteStory(story.id);
+  await load();
+}
+
+/** Read the form into a story payload for the API. */
+function collectFormData() {
+  const data = new FormData(form);
+  const acceptanceCriteria = [...criteriaList.querySelectorAll('input')]
+    .map((i) => i.value.trim())
+    .filter(Boolean);
+  return {
+    title: (data.get('title') || '').trim(),
+    description: (data.get('description') || '').trim(),
+    points: data.get('points'),
+    status: data.get('status'),
+    acceptanceCriteria,
+  };
+}
+
+/** Submit handler — create or update depending on state.editingId. */
+async function handleSubmit(event) {
+  event.preventDefault();
+  hideErrors();
+  const payload = collectFormData();
+
+  try {
+    if (state.editingId != null) {
+      await api.updateStory(state.editingId, payload);
+    } else {
+      await api.createStory(payload);
+    }
+    dialog.close();
+    await load();
+  } catch (err) {
+    if (err instanceof ApiError && err.errors.length) {
+      showErrors(err.errors);
+    } else {
+      showErrors(['Salvestamine ebaõnnestus.']);
+    }
+  }
+}
+
+// --- Wiring --------------------------------------------------------------
+
+/** Handle clicks on cards (edit / delete buttons) via event delegation. */
+function handleBoardClick(event) {
+  const card = event.target.closest('.card');
+  if (!card) return;
+  const story = state.stories.find((s) => s.id === Number(card.dataset.id));
+  if (!story) return;
+
+  const actionBtn = event.target.closest('[data-action]');
+  if (!actionBtn) return;
+
+  if (actionBtn.dataset.action === 'edit') {
+    openEditDialog(story);
+  } else if (actionBtn.dataset.action === 'delete') {
+    deleteStory(story);
+  }
+}
+
+function init() {
+  document.getElementById('new-story-btn').addEventListener('click', openCreateDialog);
+  document.getElementById('add-criterion').addEventListener('click', () => addCriterionRow());
+  document.getElementById('board').addEventListener('click', handleBoardClick);
+  form.addEventListener('submit', handleSubmit);
+  dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
+  load();
+}
+
+init();
