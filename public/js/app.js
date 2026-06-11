@@ -15,6 +15,11 @@ const form = document.getElementById('story-form');
 const formTitle = document.getElementById('story-form-title');
 const criteriaList = document.getElementById('criteria-list');
 const formErrors = document.getElementById('form-errors');
+const detailDialog = document.getElementById('detail-dialog');
+const detailContent = document.getElementById('detail-content');
+
+// Set right after a drag so the trailing click doesn't open the detail view.
+let suppressClickAfterDrag = false;
 
 // --- Data loading & rendering --------------------------------------------
 
@@ -81,6 +86,60 @@ function escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;',
   }[c]));
+}
+
+// --- Detail view ---------------------------------------------------------
+
+/** Open the detail dialog for a story. */
+function openDetail(story) {
+  state.detailId = story.id;
+  renderDetail(story);
+  detailDialog.showModal();
+}
+
+/** Render the detail dialog body (description, criteria, comments). */
+function renderDetail(story) {
+  const criteria = (story.acceptanceCriteria || [])
+    .map((c) => `<li>${escapeHtml(c)}</li>`)
+    .join('') || '<li class="muted">—</li>';
+
+  const comments = (story.comments || [])
+    .map((c) => `
+      <li class="comment" data-comment-id="${c.id}">
+        <div class="comment-body">${escapeHtml(c.text)}</div>
+        <div class="comment-meta">
+          <time>${escapeHtml(c.createdAt)}</time>
+          <button type="button" class="icon-btn" data-delete-comment="${c.id}" title="Kustuta kommentaar">🗑</button>
+        </div>
+      </li>`)
+    .join('') || '<li class="muted">Kommentaare pole</li>';
+
+  detailContent.innerHTML = `
+    <div class="detail-header">
+      <h2>${escapeHtml(story.title)}</h2>
+      <button type="button" class="icon-btn" data-detail-close title="Sulge">✕</button>
+    </div>
+    <div class="detail-badges">
+      <span class="badge points">${Number(story.points)} p</span>
+      <span class="badge status-${story.status}">${story.status}</span>
+    </div>
+    <p class="detail-dates">Loodud: ${escapeHtml(story.createdAt || '—')} · Muudetud: ${escapeHtml(story.updatedAt || '—')}</p>
+    <section class="detail-section">
+      <h3>Kirjeldus</h3>
+      <p>${story.description ? escapeHtml(story.description) : '<span class="muted">—</span>'}</p>
+    </section>
+    <section class="detail-section">
+      <h3>Vastuvõtutingimused</h3>
+      <ul class="criteria-list">${criteria}</ul>
+    </section>
+    <section class="detail-section">
+      <h3>Kommentaarid (${(story.comments || []).length})</h3>
+      <ul class="comments">${comments}</ul>
+      <form id="comment-form" class="comment-form">
+        <input type="text" name="text" placeholder="Lisa kommentaar…" autocomplete="off" />
+        <button type="submit" class="btn primary small">Lisa</button>
+      </form>
+    </section>`;
 }
 
 // --- Story dialog (create) -----------------------------------------------
@@ -212,6 +271,10 @@ function currentOrderIds() {
  * so the board always reflects the saved state.
  */
 async function onDragEnd(evt) {
+  // Ignore the click that fires right after releasing a drag.
+  suppressClickAfterDrag = true;
+  setTimeout(() => { suppressClickAfterDrag = false; }, 100);
+
   const id = Number(evt.item.dataset.id);
   const toStatus = evt.to.closest('.column').dataset.status;
   const fromStatus = evt.from.closest('.column').dataset.status;
@@ -254,13 +317,49 @@ function handleBoardClick(event) {
   if (!story) return;
 
   const actionBtn = event.target.closest('[data-action]');
-  if (!actionBtn) return;
-
-  if (actionBtn.dataset.action === 'edit') {
-    openEditDialog(story);
-  } else if (actionBtn.dataset.action === 'delete') {
-    deleteStory(story);
+  if (actionBtn) {
+    if (actionBtn.dataset.action === 'edit') {
+      openEditDialog(story);
+    } else if (actionBtn.dataset.action === 'delete') {
+      deleteStory(story);
+    }
+    return;
   }
+
+  // A plain click on the card body opens the detail view.
+  if (!suppressClickAfterDrag) {
+    openDetail(story);
+  }
+}
+
+/** Handle clicks inside the detail dialog (close button, delete comment). */
+async function onDetailClick(event) {
+  if (event.target.closest('[data-detail-close]')) {
+    detailDialog.close();
+    return;
+  }
+
+  const delBtn = event.target.closest('[data-delete-comment]');
+  if (delBtn) {
+    const commentId = Number(delBtn.dataset.deleteComment);
+    const updated = await api.deleteComment(state.detailId, commentId);
+    renderDetail(updated);
+    await load();
+  }
+}
+
+/** Add a comment from the detail dialog's form. */
+async function onCommentSubmit(event) {
+  event.preventDefault();
+  if (event.target.id !== 'comment-form') return;
+
+  const input = event.target.elements.text;
+  const text = input.value.trim();
+  if (!text) return;
+
+  const updated = await api.addComment(state.detailId, text);
+  renderDetail(updated);
+  await load();
 }
 
 function init() {
@@ -269,6 +368,8 @@ function init() {
   document.getElementById('board').addEventListener('click', handleBoardClick);
   form.addEventListener('submit', handleSubmit);
   dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
+  detailContent.addEventListener('click', onDetailClick);
+  detailContent.addEventListener('submit', onCommentSubmit);
   initDragAndDrop();
   load();
 }
