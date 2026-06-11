@@ -193,6 +193,57 @@ async function handleSubmit(event) {
   }
 }
 
+// --- Drag and drop -------------------------------------------------------
+
+/** Collect every card id in current DOM order, across all columns. */
+function currentOrderIds() {
+  const ids = [];
+  for (const status of COLUMNS) {
+    document.querySelectorAll(`[data-list="${status}"] .card`).forEach((card) => {
+      ids.push(Number(card.dataset.id));
+    });
+  }
+  return ids;
+}
+
+/**
+ * Called by SortableJS after a drag completes. Persists a status change
+ * (when the card moved to another column) and the new ordering, then reloads
+ * so the board always reflects the saved state.
+ */
+async function onDragEnd(evt) {
+  const id = Number(evt.item.dataset.id);
+  const toStatus = evt.to.closest('.column').dataset.status;
+  const fromStatus = evt.from.closest('.column').dataset.status;
+
+  try {
+    if (toStatus !== fromStatus) {
+      await api.setStatus(id, toStatus);
+    }
+    await api.reorder(currentOrderIds());
+  } catch (err) {
+    // On error, the reload below restores the server's truth.
+  }
+  await load();
+}
+
+/** Make every column a SortableJS drop target sharing one group. */
+function initDragAndDrop() {
+  for (const status of COLUMNS) {
+    const list = document.querySelector(`[data-list="${status}"]`);
+    // eslint-disable-next-line no-new
+    new window.Sortable(list, {
+      group: 'stories',
+      draggable: '.card',
+      filter: '.icon-btn', // clicks on edit/delete must not start a drag
+      preventOnFilter: false,
+      animation: 150,
+      ghostClass: 'card-ghost',
+      onEnd: onDragEnd,
+    });
+  }
+}
+
 // --- Wiring --------------------------------------------------------------
 
 /** Handle clicks on cards (edit / delete buttons) via event delegation. */
@@ -218,6 +269,7 @@ function init() {
   document.getElementById('board').addEventListener('click', handleBoardClick);
   form.addEventListener('submit', handleSubmit);
   dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
+  initDragAndDrop();
   load();
 }
 
