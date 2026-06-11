@@ -138,3 +138,65 @@ test('DELETE /api/stories/:id returns 204, then 404 on repeat', async () => {
   const second = await api('DELETE', '/api/stories/1');
   assert.equal(second.status, 404);
 });
+
+// --- PATCH status ---------------------------------------------------------
+
+test('PATCH /api/stories/:id/status changes status; rejects invalid status', async () => {
+  const ok = await api('PATCH', '/api/stories/1/status', { status: 'done' });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.status, 'done');
+
+  const bad = await api('PATCH', '/api/stories/1/status', { status: 'nope' });
+  assert.equal(bad.status, 400);
+
+  const missing = await api('PATCH', '/api/stories/999/status', { status: 'done' });
+  assert.equal(missing.status, 404);
+});
+
+// --- PATCH reorder --------------------------------------------------------
+
+test('PATCH /api/stories/reorder persists the new ordering', async () => {
+  const { status, body } = await api('PATCH', '/api/stories/reorder', { order: [4, 3, 1] });
+  assert.equal(status, 200);
+  const priorityOf = (id) => body.find((s) => s.id === id).priority;
+  assert.ok(priorityOf(4) < priorityOf(3));
+  assert.ok(priorityOf(3) < priorityOf(1));
+
+  // Confirm it survived (re-fetch).
+  const again = await api('GET', '/api/stories');
+  const p = (id) => again.body.find((s) => s.id === id).priority;
+  assert.ok(p(4) < p(3) && p(3) < p(1));
+});
+
+test('PATCH /api/stories/reorder rejects a non-array body', async () => {
+  const { status } = await api('PATCH', '/api/stories/reorder', { order: 'x' });
+  assert.equal(status, 400);
+});
+
+// --- Comments -------------------------------------------------------------
+
+test('POST /api/stories/:id/comments adds a timestamped comment', async () => {
+  const { status, body } = await api('POST', '/api/stories/1/comments', { text: 'Tubli töö' });
+  assert.equal(status, 201);
+  const last = body.comments[body.comments.length - 1];
+  assert.equal(last.text, 'Tubli töö');
+  assert.match(last.createdAt, /\d{4}-\d{2}-\d{2} \d{2}:\d{2}/);
+});
+
+test('POST comment rejects empty text (400) and missing story (404)', async () => {
+  const empty = await api('POST', '/api/stories/1/comments', { text: '   ' });
+  assert.equal(empty.status, 400);
+
+  const missing = await api('POST', '/api/stories/999/comments', { text: 'x' });
+  assert.equal(missing.status, 404);
+});
+
+test('DELETE /api/stories/:id/comments/:commentId removes a comment', async () => {
+  // Story 3 ships with one seed comment (id 1).
+  const ok = await api('DELETE', '/api/stories/3/comments/1');
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.comments.length, 0);
+
+  const missing = await api('DELETE', '/api/stories/3/comments/999');
+  assert.equal(missing.status, 404);
+});
