@@ -44,6 +44,37 @@ body {
   flex-wrap: wrap;
 }
 
+.control {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+}
+
+.control:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+}
+
+.search {
+  min-width: 220px;
+}
+
+.points-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.points-input {
+  width: 64px;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 1.5rem;

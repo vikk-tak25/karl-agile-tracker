@@ -17,6 +17,20 @@
         <p class="tagline">Kasutajalugude Kanban-laud</p>
       </div>
       <div class="toolbar">
+        <input type="search" id="search-input" class="control search" placeholder="Otsi pealkirja/kirjeldust…" />
+        <select id="status-filter" class="control">
+          <option value="all">Kõik staatused</option>
+          <option value="todo">todo</option>
+          <option value="doing">doing</option>
+          <option value="done">done</option>
+        </select>
+        <span class="points-filter">
+          <label>Punktid</label>
+          <input type="number" id="min-points" class="control points-input" min="0" step="1" placeholder="min" />
+          <span>–</span>
+          <input type="number" id="max-points" class="control points-input" min="0" step="1" placeholder="max" />
+        </span>
+        <button type="button" class="btn" id="clear-filters">Tühjenda</button>
         <button type="button" class="btn primary" id="new-story-btn">+ Lisa story</button>
       </div>
     </header>
