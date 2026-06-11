@@ -1,0 +1,70 @@
+[
+  {
+    "id": 1,
+    "title": "Kasutajana tahan lisada uue story, et saaksin tööülesande backlogi panna.",
+    "description": "Kasutaja saab luua uue story koos pealkirja, kirjelduse ja punktidega.",
+    "status": "todo",
+    "points": 3,
+    "priority": 1,
+    "acceptanceCriteria": [
+      "Vormis saab sisestada pealkirja.",
+      "Vormis saab sisestada kirjelduse.",
+      "Vormis saab sisestada punktid.",
+      "Salvestamisel ilmub story Todo / Backlog veergu."
+    ],
+    "comments": [],
+    "createdAt": "2026-05-12 09:00",
+    "updatedAt": "2026-05-12 09:00"
+  },
+  {
+    "id": 2,
+    "title": "Kasutajana tahan muuta story staatust, et näidata töö edenemist.",
+    "description": "Story staatust saab muuta todo, doing ja done vahel.",
+    "status": "doing",
+    "points": 5,
+    "priority": 1,
+    "acceptanceCriteria": [
+      "Story staatust saab muuta.",
+      "Lubatud staatused on todo, doing ja done.",
+      "Story liigub õige staatuse veergu."
+    ],
+    "comments": [],
+    "createdAt": "2026-05-12 09:05",
+    "updatedAt": "2026-05-12 11:20"
+  },
+  {
+    "id": 3,
+    "title": "Kasutajana tahan lisada story juurde kommentaare, et arutelu oleks story juures nähtav.",
+    "description": "Story juurde saab lisada kommentaare, mis kuvatakse ajatempliga.",
+    "status": "todo",
+    "points": 3,
+    "priority": 2,
+    "acceptanceCriteria": [
+      "Kommentaari saab sisestada.",
+      "Kommentaari saab salvestada.",
+      "Kommentaar kuvatakse story juures.",
+      "Kommentaari juures kuvatakse lisamise aeg."
+    ],
+    "comments": [
+      { "id": 1, "text": "Seda tuleb testida.", "createdAt": "2026-05-12 14:32" }
+    ],
+    "createdAt": "2026-05-12 09:10",
+    "updatedAt": "2026-05-12 14:32"
+  },
+  {
+    "id": 4,
+    "title": "Kasutajana tahan backlogi story'sid ümber järjestada, et saaksin määrata prioriteedi.",
+    "description": "Backlogis saab story'sid hiirega ümber järjestada ja järjekord salvestub.",
+    "status": "todo",
+    "points": 8,
+    "priority": 3,
+    "acceptanceCriteria": [
+      "Backlogis olevaid story'sid saab hiirega lohistada.",
+      "Uus järjekord salvestatakse.",
+      "Pärast lehe uuendamist jääb järjekord samaks."
+    ],
+    "comments": [],
+    "createdAt": "2026-05-12 09:15",
+    "updatedAt": "2026-05-12 09:15"
+  }
+]
