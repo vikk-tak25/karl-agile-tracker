@@ -332,11 +332,34 @@ function handleBoardClick(event) {
   }
 }
 
-/** Handle clicks inside the detail dialog (close button). */
-function onDetailClick(event) {
+/** Handle clicks inside the detail dialog (close button, delete comment). */
+async function onDetailClick(event) {
   if (event.target.closest('[data-detail-close]')) {
     detailDialog.close();
+    return;
   }
+
+  const delBtn = event.target.closest('[data-delete-comment]');
+  if (delBtn) {
+    const commentId = Number(delBtn.dataset.deleteComment);
+    const updated = await api.deleteComment(state.detailId, commentId);
+    renderDetail(updated);
+    await load();
+  }
+}
+
+/** Add a comment from the detail dialog's form. */
+async function onCommentSubmit(event) {
+  event.preventDefault();
+  if (event.target.id !== 'comment-form') return;
+
+  const input = event.target.elements.text;
+  const text = input.value.trim();
+  if (!text) return;
+
+  const updated = await api.addComment(state.detailId, text);
+  renderDetail(updated);
+  await load();
 }
 
 function init() {
@@ -346,6 +369,7 @@ function init() {
   form.addEventListener('submit', handleSubmit);
   dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
   detailContent.addEventListener('click', onDetailClick);
+  detailContent.addEventListener('submit', onCommentSubmit);
   initDragAndDrop();
   load();
 }
