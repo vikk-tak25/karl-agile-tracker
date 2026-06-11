@@ -114,4 +114,24 @@ router.patch('/:id/status', (req, res) => {
   res.json(updated);
 });
 
+// PATCH /api/stories/reorder — persist a new ordering (backlog prioritisation).
+// Body: { "order": [id, id, ...] }. Each listed story gets priority = position.
+router.patch('/reorder', (req, res) => {
+  const order = (req.body || {}).order;
+  if (!Array.isArray(order)) {
+    return res.status(400).json({ errors: ['Väli "order" peab olema massiiv id-dest.'] });
+  }
+
+  const all = store.getAll();
+  order.forEach((id, index) => {
+    const story = all.find((s) => s.id === Number(id));
+    if (story) {
+      story.priority = index + 1;
+    }
+  });
+
+  store.saveAll(all);
+  res.json(sortByPriority(all));
+});
+
 export default router;
