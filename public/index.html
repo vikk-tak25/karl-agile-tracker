@@ -4,9 +4,46 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Agile Tracker</title>
+    <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
-    <h1>Agile Tracker</h1>
-    <p>Server töötab. Kanban-laud lisatakse järgmistes issue'des.</p>
+    <header class="app-header">
+      <h1>Agile Tracker</h1>
+      <p class="tagline">Kasutajalugude Kanban-laud</p>
+    </header>
+
+    <main class="board" id="board">
+      <section class="column" data-status="todo">
+        <header class="column-header">
+          <h2>Todo / Backlog</h2>
+          <span class="column-meta">
+            <span data-count>0</span> story · <span data-points>0</span> p
+          </span>
+        </header>
+        <div class="cards" data-list="todo"></div>
+      </section>
+
+      <section class="column" data-status="doing">
+        <header class="column-header">
+          <h2>Doing</h2>
+          <span class="column-meta">
+            <span data-count>0</span> story · <span data-points>0</span> p
+          </span>
+        </header>
+        <div class="cards" data-list="doing"></div>
+      </section>
+
+      <section class="column" data-status="done">
+        <header class="column-header">
+          <h2>Done</h2>
+          <span class="column-meta">
+            <span data-count>0</span> story · <span data-points>0</span> p
+          </span>
+        </header>
+        <div class="cards" data-list="done"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/js/app.js"></script>
   </body>
 </html>
