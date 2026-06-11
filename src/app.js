@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import storiesRouter from './routes/stories.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -22,6 +23,9 @@ export function createApp() {
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', name: 'agile-tracker' });
   });
+
+  // REST API for stories.
+  app.use('/api/stories', storiesRouter);
 
   return app;
 }
